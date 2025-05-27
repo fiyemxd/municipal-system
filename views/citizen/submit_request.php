@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'citizen') {
 
 <h2>Submit a Service Request</h2>
 
-<form method="POST" action="/submit-request" enctype="multipart/form-data">
+<form method="POST" action="../../controllers/CitizenController.php?action=submit" enctype="multipart/form-data">
     <label>Issue Category:</label>
     <select name="category" required>
         <option value="pothole">Pothole</option>
@@ -35,5 +35,5 @@ navigator.geolocation.getCurrentPosition(function(position) {
 });
 </script>
 
-<a href="/citizen-dashboard">Go to Dashboard</a> |
-<a href="/logout">Logout</a>
+<a href="/views/citizen/dashboard.php">Go to Dashboard</a> |
+<a href="/controllers/AuthController.php?action=logout">Logout</a>

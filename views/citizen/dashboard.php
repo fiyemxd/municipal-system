@@ -20,5 +20,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'citizen') {
     <?php endforeach; ?>
 </table>
 
-<a href="/submit-request-page">Submit New Request</a> |
-<a href="/logout">Logout</a>
+<a href="/views/citizen/submit_request.php">Submit New Request</a> |
+<a href="/controllers/AuthController.php?action=logout">Logout</a>
+

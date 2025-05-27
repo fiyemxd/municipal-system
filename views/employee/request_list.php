@@ -4,11 +4,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
     header("Location: /login-page");
     exit;
 }
+
 ?>
 
 <h2>Assigned Service Requests</h2>
 
-<form method="POST" action="/update-status">
+<form method="POST" action="/controllers/EmployeeController.php?action=update">
     <table border="1">
         <tr><th>Select</th><th>Category</th><th>Description</th><th>Status</th><th>Location</th></tr>
         <?php foreach ($requests as $req): ?>
@@ -34,4 +35,4 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
     <button type="submit">Update</button>
 </form>
 
-<a href="/logout">Logout</a>
+<a href="/controllers/AuthController.php?action=logout">Logout</a>

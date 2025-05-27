@@ -18,4 +18,4 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     <?php endforeach; ?>
 </table>
 
-<a href="/logout">Logout</a>
+<a href="/controllers/AuthController.php?action=logout">Logout</a>
