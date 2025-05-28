@@ -7,20 +7,20 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'employee') {
     exit;
 }
 
-$requests = Request::getResolved();
+$requests = Request::getInProgress();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Resolved Requests</title>
+  <title>In Progress Requests</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
 <?php include_once realpath(__DIR__ . '/../partials/navbar.php'); ?>
 <div class="container mt-4">
-  <h3>Resolved Service Requests</h3>
+  <h3>In Progress Service Requests</h3>
   <table class="table table-bordered table-striped mt-3 align-middle">
     <thead class="table-dark">
       <tr>
@@ -78,7 +78,7 @@ $requests = Request::getResolved();
                 </div>
                 <div class="modal-body">
                   <input type="hidden" name="id" value="<?= $req['id'] ?>">
-                  <input type="hidden" name="from" value="resolved_requests.php">
+                  <input type="hidden" name="from" value="in_progress_requests.php">
 
                   <div class="mb-3">
                     <label class="form-label">Description:</label>

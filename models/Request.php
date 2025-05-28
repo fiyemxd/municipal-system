@@ -66,12 +66,13 @@ class Request {
             SELECT r.*, u.username 
             FROM service_requests r
             JOIN users u ON r.user_id = u.id
-            WHERE r.status != 'Resolved'
+            WHERE r.status = 'Pending'
             ORDER BY r.created_at DESC
         ");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function getResolved() {
         global $pdo;
@@ -79,4 +80,17 @@ class Request {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    public static function getInProgress() {
+    global $pdo;
+    $stmt = $pdo->prepare("
+        SELECT r.*, u.username 
+        FROM service_requests r
+        JOIN users u ON r.user_id = u.id
+        WHERE r.status = 'In Progress'
+        ORDER BY r.created_at DESC
+    ");
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 }

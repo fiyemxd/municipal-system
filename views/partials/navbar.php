@@ -9,6 +9,7 @@
             <li class="nav-item"><a class="nav-link" href="../citizen/submit_request.php">Submit Request</a></li>
         <?php elseif ($_SESSION['role'] === 'employee'): ?>
             <li class="nav-item"><a class="nav-link" href="../employee/pending_requests.php">Pending</a></li>
+            <li class="nav-item"><a class="nav-link" href="../employee/in_progress_requests.php">In Progress</a></li>
             <li class="nav-item"><a class="nav-link" href="../employee/resolved_requests.php">Resolved</a></li>
         <?php elseif ($_SESSION['role'] === 'admin'): ?>
             <li class="nav-item"><a class="nav-link" href="../admin/reports.php">Reports</a></li>
