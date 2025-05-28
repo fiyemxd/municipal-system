@@ -1,5 +1,6 @@
 <?php
-require_once '../config/db.php';
+require_once __DIR__ . '/../config/db.php';
+
 
 class Request {
 
@@ -29,13 +30,14 @@ class Request {
     public static function updateStatus($id, $status, $resolvePhoto = '') {
         global $pdo;
         if ($resolvePhoto !== '') {
-            $stmt = $pdo->prepare("UPDATE service_requests SET status = ?, media_path = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE service_requests SET status = ?, media_path = ?, updated_at = NOW() WHERE id = ?");
             return $stmt->execute([$status, $resolvePhoto, $id]);
         } else {
-            $stmt = $pdo->prepare("UPDATE service_requests SET status = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE service_requests SET status = ?, updated_at = NOW() WHERE id = ?");
             return $stmt->execute([$status, $id]);
         }
     }
+
 
     // === 5. Admin Raporu: Kategoriye Göre Sayım ===
     public static function getStatistics() {
@@ -57,5 +59,24 @@ class Request {
         $stmt = $pdo->prepare("SELECT * FROM service_requests WHERE id = ?");
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    public static function getPending() {
+        global $pdo;
+        $stmt = $pdo->prepare("
+            SELECT r.*, u.username 
+            FROM service_requests r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.status != 'Resolved'
+            ORDER BY r.created_at DESC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function getResolved() {
+        global $pdo;
+        $stmt = $pdo->prepare("SELECT * FROM service_requests WHERE status = 'Resolved' ORDER BY updated_at DESC");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

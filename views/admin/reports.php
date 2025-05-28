@@ -1,21 +1,39 @@
 <?php
 session_start();
+require_once realpath(__DIR__ . '/../../models/Request.php');
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header("Location: /login-page");
+    header("Location: ../login.php");
     exit;
 }
+$stats = Request::getStatistics();
 ?>
-
-<h2>Request Statistics</h2>
-
-<table border="1">
-    <tr><th>Category</th><th>Total Requests</th></tr>
-    <?php foreach ($stats as $row): ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Reports</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<?php include_once realpath(__DIR__ . '/../partials/navbar.php'); ?>
+<div class="container mt-4">
+  <h3>Request Statistics</h3>
+  <table class="table table-bordered table-striped mt-3">
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Total Requests</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($stats as $row): ?>
         <tr>
-            <td><?= htmlspecialchars($row['category']) ?></td>
-            <td><?= $row['count'] ?></td>
+          <td><?= htmlspecialchars($row['category']) ?></td>
+          <td><?= $row['count'] ?></td>
         </tr>
-    <?php endforeach; ?>
-</table>
-
-<a href="/controllers/AuthController.php?action=logout">Logout</a>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

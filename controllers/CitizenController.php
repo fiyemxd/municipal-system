@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
 
         // Medya yükleme işlemi
         if (isset($_FILES['media']) && $_FILES['media']['error'] === 0) {
-            $uploadDir = '../uploads/';
+            $uploadDir = '../views/uploads/';
             if (!file_exists($uploadDir)) {
                 mkdir($uploadDir, 0777, true);
             }

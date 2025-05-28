@@ -32,3 +32,19 @@ function showEmployeeRequests() {
 if (isset($_GET['action']) && $_GET['action'] === 'show') {
     showEmployeeRequests();
 }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'resolve') {
+    $id = $_POST['id'];
+    Request::updateStatus($id, 'Resolved');
+    header("Location: ../views/employee/pending_requests.php");
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'update_status_inline') {
+    $id = $_POST['id'];
+    $status = $_POST['status'];
+
+    Request::updateStatus($id, $status);
+
+    $redirectPage = $_POST['from'] ?? 'pending_requests.php';
+    header("Location: ../views/employee/$redirectPage");
+    exit;
+}

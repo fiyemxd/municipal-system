@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'], $_POST['p
                     header("Location: ../views/citizen/dashboard.php");
                     exit;
                 case 'employee':
-                    header("Location: ../views/employee/request_list.php");
+                    header("Location: ../views/employee/pending_requests.php");
                     exit;
                 case 'admin':
                     header("Location: ../views/admin/reports.php");
