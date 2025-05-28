@@ -1,10 +1,12 @@
 <?php
 session_start();
 require_once realpath(__DIR__ . '/../../models/Request.php');
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../login.php");
     exit;
 }
+
 $stats = Request::getStatistics();
 ?>
 <!DOCTYPE html>
@@ -17,9 +19,9 @@ $stats = Request::getStatistics();
 <body>
 <?php include_once realpath(__DIR__ . '/../partials/navbar.php'); ?>
 <div class="container mt-4">
-  <h3>Request Statistics</h3>
-  <table class="table table-bordered table-striped mt-3">
-    <thead>
+  <h3>Service Request Statistics</h3>
+  <table class="table table-bordered table-striped mt-4">
+    <thead class="table-dark">
       <tr>
         <th>Category</th>
         <th>Total Requests</th>
