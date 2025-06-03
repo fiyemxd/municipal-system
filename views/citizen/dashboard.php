@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once realpath(__DIR__ . '/../../models/Request.php');
+require_once realpath(__DIR__ . '/../../models/Notification.php');
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'citizen') {
     header("Location: ../login.php");
@@ -8,6 +9,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'citizen') {
 }
 
 $requests = Request::getByUser($_SESSION['user_id']);
+$notifications = Notification::getUnread($_SESSION['user_id']);
+$hasNotifications = count($notifications) > 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -19,8 +22,34 @@ $requests = Request::getByUser($_SESSION['user_id']);
 </head>
 <body>
 <?php include_once realpath(__DIR__ . '/../partials/navbar.php'); ?>
+
 <div class="container mt-4">
-  <h3>Your Submitted Requests</h3>
+
+  <!-- Bildirim kutusu -->
+  <div class="d-flex justify-content-between align-items-center">
+    <h3>Your Submitted Requests</h3>
+    <?php if ($hasNotifications): ?>
+      <div class="dropdown">
+        <button class="btn btn-danger dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          🔔 <?= count($notifications) ?> New
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <?php foreach ($notifications as $note): ?>
+            <li class="dropdown-item"><?= htmlspecialchars($note['message']) ?></li>
+          <?php endforeach; ?>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="POST" action="../../controllers/CitizenController.php?action=clear_notifications">
+              <button type="submit" class="dropdown-item text-primary">Mark all as read</button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    <?php else: ?>
+      <div class="text-muted">🔕 No new notifications</div>
+    <?php endif; ?>
+  </div>
+
   <table class="table table-bordered table-striped align-middle mt-3">
     <thead class="table-dark">
       <tr>
@@ -65,8 +94,8 @@ $requests = Request::getByUser($_SESSION['user_id']);
           </td>
         </tr>
 
-        <!-- Modal -->
-        <div class="modal fade" id="descModal<?= $index ?>" tabindex="-1" aria-hidden="true">
+        <!-- Açıklama modalı -->
+        <div class="modal fade" id="descModal<?= $index ?>" tabindex="-1">
           <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
               <div class="modal-header bg-dark text-white">

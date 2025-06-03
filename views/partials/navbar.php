@@ -13,6 +13,7 @@
             <li class="nav-item"><a class="nav-link" href="../employee/resolved_requests.php">Resolved</a></li>
         <?php elseif ($_SESSION['role'] === 'admin'): ?>
             <li class="nav-item"><a class="nav-link" href="../admin/reports.php">Reports</a></li>
+            <li class="nav-item"><a class="nav-link" href="../admin/map.php">Map</a></li>
         <?php endif; ?>
         <li class="nav-item"><a class="nav-link" href="../../controllers/AuthController.php?action=logout">Logout</a></li>
       </ul>

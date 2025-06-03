@@ -80,17 +80,51 @@ class Request {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
     public static function getInProgress() {
-    global $pdo;
-    $stmt = $pdo->prepare("
-        SELECT r.*, u.username 
-        FROM service_requests r
-        JOIN users u ON r.user_id = u.id
-        WHERE r.status = 'In Progress'
-        ORDER BY r.created_at DESC
-    ");
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+        global $pdo;
+        $stmt = $pdo->prepare("
+            SELECT r.*, u.username 
+            FROM service_requests r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.status = 'In Progress'
+            ORDER BY r.created_at DESC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    public static function getAllWithLocation() {
+        global $pdo;
+        $stmt = $pdo->prepare("
+            SELECT r.*, u.username 
+            FROM service_requests r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.latitude IS NOT NULL AND r.longitude IS NOT NULL
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function getAllRequests() {
+        global $pdo;
+        $stmt = $pdo->prepare("
+            SELECT r.*, u.username 
+            FROM service_requests r
+            JOIN users u ON r.user_id = u.id
+            ORDER BY r.created_at DESC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function getUserIdByRequestId($requestId) {
+        global $pdo;
+        $stmt = $pdo->prepare("SELECT user_id FROM service_requests WHERE id = ?");
+        $stmt->execute([$requestId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['user_id'] : null;
+    }
+
 
 }

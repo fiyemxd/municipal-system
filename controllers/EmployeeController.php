@@ -20,9 +20,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     }
 
     Request::updateStatus($id, $status, $resolvePhoto);
+
+    // === Bildirim üret ===
+    require_once '../models/Notification.php';
+    $userId = Request::getUserIdByRequestId($id);
+    if ($userId) {
+        $message = "Your request #$id status changed to '$status'";
+        Notification::create($userId, $message);
+    }
+
     header("Location: ../views/employee/request_list.php");
     exit;
 }
+
 
 // === PANEL İÇİN VERİ ÇEK ===
 function showEmployeeRequests() {
