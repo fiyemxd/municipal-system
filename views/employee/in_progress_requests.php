@@ -1,4 +1,7 @@
 <?php
+function base_url($path = '') {
+    return 'http://' . $_SERVER['HTTP_HOST'] . '/' . ltrim($path, '/');
+}
 session_start();
 require_once realpath(__DIR__ . '/../../models/Request.php');
 
@@ -52,8 +55,8 @@ $requests = Request::getInProgress();
           <td><?= htmlspecialchars($req['created_at']) ?></td>
           <td>
             <?php if (!empty($req['media_path'])): ?>
-              <a href="<?= $req['media_path'] ?>" target="_blank">
-                <img src="<?= $req['media_path'] ?>" alt="media" style="width: 50px;">
+              <a href="<?= base_url($req['media_path']) ?>" target="_blank">
+                <img src="<?= base_url($req['media_path']) ?>" alt="media" style="width: 50px;">
               </a>
             <?php else: ?>
               <span class="text-muted">None</span>
@@ -97,7 +100,7 @@ $requests = Request::getInProgress();
                   <div class="mb-3">
                     <label class="form-label">Media Preview:</label><br>
                     <?php if ($req['media_path']): ?>
-                      <img src="<?= $req['media_path'] ?>" style="max-width: 100%; height: auto;">
+                      <img src="<?= base_url($req['media_path']) ?>" style="max-width: 100%; height: auto;">
                     <?php else: ?>
                       <span class="text-muted">No media available.</span>
                     <?php endif; ?>

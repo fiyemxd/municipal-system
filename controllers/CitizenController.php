@@ -21,19 +21,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         $userId = $_SESSION['user_id'];
         $mediaPath = '';
 
-        // Medya yükleme işlemi
-        if (!empty($_FILES['media']['name'])) {
-            $filename = time() . '_' . basename($_FILES['media']['name']);
-            $targetDir = __DIR__ . '/../public/uploads/';
-            if (!is_dir($targetDir)) {
-                mkdir($targetDir, 0777, true);
-            }
+        // Gerçek yolu açıkça ve doğru şekilde ayarlıyoruz
+        $targetDir = realpath(__DIR__ . '/../') . '/public/uploads/';
 
-            $targetPath = $targetDir . $filename;
-            move_uploaded_file($_FILES['media']['tmp_name'], $targetPath);
-            
-            $mediaPath = '/public/uploads/' . $filename; // public içinde olduğu için "/uploads/..." yazılmalı
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0777, true);
         }
+
+        $filename = time() . '_' . basename($_FILES['media']['name']);
+        $targetPath = $targetDir . $filename;
+
+        if (move_uploaded_file($_FILES['media']['tmp_name'], $targetPath)) {
+            $mediaPath = 'public/uploads/' . $filename; // Veritabanı için kullanılacak yol (public içinde)
+        } else {
+            // Hata kontrolü
+            die('Dosya yüklenemedi.');
+        }
+
 
         if (empty($latitude) || empty($longitude)) {
             throw new Exception("Konum alınamadı. Lütfen konum izni verdiğinizden emin olun.");

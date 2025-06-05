@@ -76,10 +76,17 @@ class Request {
 
     public static function getResolved() {
         global $pdo;
-        $stmt = $pdo->prepare("SELECT * FROM service_requests WHERE status = 'Resolved' ORDER BY updated_at DESC");
+        $stmt = $pdo->prepare("
+            SELECT r.*, u.username 
+            FROM service_requests r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.status = 'Resolved'
+            ORDER BY r.created_at DESC
+        ");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function getInProgress() {
         global $pdo;
@@ -120,10 +127,23 @@ class Request {
 
     public static function getUserIdByRequestId($requestId) {
         global $pdo;
-        $stmt = $pdo->prepare("SELECT user_id FROM service_requests WHERE id = ?");
-        $stmt->execute([$requestId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ? $result['user_id'] : null;
+        try {
+            $stmt = $pdo->prepare("SELECT user_id FROM service_requests WHERE id = ?");
+            $stmt->execute([$requestId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? $row['user_id'] : null;
+        } catch (PDOException $e) {
+            error_log("getUserIdByRequestId error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+
+    public static function getByIdAndUser($id, $userId) {
+        global $pdo;
+        $stmt = $pdo->prepare("SELECT * FROM service_requests WHERE id = ? AND user_id = ?");
+        $stmt->execute([$id, $userId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
 

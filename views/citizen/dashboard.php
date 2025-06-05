@@ -1,4 +1,11 @@
 <?php
+// Diğer kodların üstüne ekleyin
+function base_url($path = '') {
+    return 'http://' . $_SERVER['HTTP_HOST'] . '/' . ltrim($path, '/');
+}
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 session_start();
 require_once realpath(__DIR__ . '/../../models/Request.php');
 require_once realpath(__DIR__ . '/../../models/Notification.php');
@@ -8,9 +15,40 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'citizen') {
     exit;
 }
 
+$unreadNotifications = [];
+$allRecentNotifications = [];
+$requests = [];
+$error_message = null;
+
+try {
+    $requests = Request::getByUser($_SESSION['user_id']);
+    $unreadNotifications = Notification::getUnread($_SESSION['user_id']);
+    $allRecentNotifications = Notification::getRecent($_SESSION['user_id'], 10);
+
+    // 🔽 Debug çıktısı burada olacak
+    echo "<!-- Unread Notifications: " . print_r($unreadNotifications, true) . " -->";
+    echo "<!-- All Notifications: " . print_r($allRecentNotifications, true) . " -->";
+
+} catch (Exception $e) {
+    $error_message = "Veriler yüklenirken hata oluştu: " . $e->getMessage();
+}
+
+// === CLEAR NOTIFICATIONS İŞLEMİ ===
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'clear_notifications') {
+    $result = Notification::markAllAsRead($_SESSION['user_id']);
+    if ($result) {
+        // Başarılı işlem sonrası sayfayı yenile
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    } else {
+        $error_message = "Bildirimler okundu olarak işaretlenemedi.";
+    }
+}
+
 $requests = Request::getByUser($_SESSION['user_id']);
-$notifications = Notification::getUnread($_SESSION['user_id']);
-$hasNotifications = count($notifications) > 0;
+$unreadNotifications = Notification::getUnread($_SESSION['user_id']);
+$allRecentNotifications = Notification::getRecent($_SESSION['user_id'], 10); // Son 10 bildirim
+$unreadCount = count($unreadNotifications);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -25,29 +63,77 @@ $hasNotifications = count($notifications) > 0;
 
 <div class="container mt-4">
 
+  <?php if (isset($error_message)): ?>
+    <div class="alert alert-danger"><?= $error_message ?></div>
+  <?php endif; ?>
+
   <!-- Bildirim kutusu -->
   <div class="d-flex justify-content-between align-items-center">
     <h3>Your Submitted Requests</h3>
-    <?php if ($hasNotifications): ?>
-      <div class="dropdown">
-        <button class="btn btn-danger dropdown-toggle" type="button" data-bs-toggle="dropdown">
-          🔔 <?= count($notifications) ?> New
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <?php foreach ($notifications as $note): ?>
-            <li class="dropdown-item"><?= htmlspecialchars($note['message']) ?></li>
+    
+    <!-- Bildirim dropdown - her zaman görünür -->
+    <div class="dropdown">
+      <button class="btn <?= $unreadCount > 0 ? 'btn-danger' : 'btn-outline-secondary' ?> dropdown-toggle position-relative" 
+              type="button" data-bs-toggle="dropdown">
+        🔔 Notifications
+        <?php if ($unreadCount > 0): ?>
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            <?= $unreadCount ?>
+          </span>
+        <?php endif; ?>
+      </button>
+      
+      <ul class="dropdown-menu dropdown-menu-end" style="width: 350px; max-height: 400px; overflow-y: auto;">
+        <?php if (count($allRecentNotifications) > 0): ?>
+          <?php foreach ($allRecentNotifications as $note): ?>
+            <li class="<?= $note['is_read'] == 0 ? 'bg-light' : '' ?>">
+              <div class="dropdown-item p-3 notification-item" 
+                data-request-id="<?= $note['request_id'] ?? '' ?>"
+                style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="flex-grow-1">
+                    <p class="mb-1 <?= $note['is_read'] == 0 ? 'fw-bold' : 'text-muted' ?>">
+                      <?= htmlspecialchars($note['message']) ?>
+                    </p>
+                    <small class="text-muted">
+                      <?= date('M j, H:i', strtotime($note['created_at'])) ?>
+                    </small>
+                  </div>
+                  <?php if ($note['is_read'] == 0): ?>
+                    <span class="badge bg-primary ms-2">Yeni</span>
+                  <?php endif; ?>
+                </div>
+              </div>
+            </li>
           <?php endforeach; ?>
+          
           <li><hr class="dropdown-divider"></li>
-          <li>
-            <form method="POST" action="../../controllers/CitizenController.php?action=clear_notifications">
-              <button type="submit" class="dropdown-item text-primary">Mark all as read</button>
-            </form>
+          
+          <!-- İşlem butonları -->
+          <li class="p-2">
+            <div class="d-flex justify-content-between">
+              <?php if ($unreadCount > 0): ?>
+                <form method="POST" class="d-inline">
+                  <input type="hidden" name="action" value="clear_notifications">
+                  <button type="submit" class="btn btn-sm btn-primary">Hepsini Okundu</button>
+                </form>
+              <?php endif; ?>
+              <button class="btn btn-sm btn-outline-primary" onclick="showAllNotifications()">
+                Tümünü Gör
+              </button>
+            </div>
           </li>
-        </ul>
-      </div>
-    <?php else: ?>
-      <div class="text-muted">🔕 No new notifications</div>
-    <?php endif; ?>
+          
+        <?php else: ?>
+          <li class="dropdown-item text-center text-muted py-3">
+            <div>
+              🔕<br>
+              <small>Henüz bildirim yok</small>
+            </div>
+          </li>
+        <?php endif; ?>
+      </ul>
+    </div>
   </div>
 
   <table class="table table-bordered table-striped align-middle mt-3">
@@ -78,13 +164,13 @@ $hasNotifications = count($notifications) > 0;
           </td>
           <td><?= htmlspecialchars($req['created_at']) ?></td>
           <td>
-            <?php if ($req['media_path']): ?>
-              <a href="<?= $req['media_path'] ?>" target="_blank">
-                <img src="<?= $req['media_path'] ?>" style="width: 50px;">
-              </a>
-            <?php else: ?>
-              <span class="text-muted">None</span>
-            <?php endif; ?>
+              <?php if ($req['media_path']): ?>
+                  <a href="<?= base_url($req['media_path']) ?>" target="_blank">
+                      <img src="<?= base_url($req['media_path']) ?>" style="width: 50px;">
+                  </a>
+              <?php else: ?>
+                  <span class="text-muted">None</span>
+              <?php endif; ?>
           </td>
           <td>
             <a href="https://maps.google.com/?q=<?= $req['latitude'] ?>,<?= $req['longitude'] ?>" target="_blank" class="btn btn-outline-primary btn-sm">Map</a>
@@ -115,5 +201,197 @@ $hasNotifications = count($notifications) > 0;
     </tbody>
   </table>
 </div>
+
+<!-- Request Detay Modal -->
+<div class="modal fade" id="requestDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">Request Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="requestDetailContent">
+        <div class="text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tüm Bildirimler Modal -->
+<div class="modal fade" id="allNotificationsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">All Notifications</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="allNotificationsContent">
+        <div class="text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Request detayını göster
+function showRequestDetails(requestId) {
+  if (!requestId) {
+    alert('Bu bildirim için detay bulunamadı.');
+    return;
+  }
+  
+  const modal = new bootstrap.Modal(document.getElementById('requestDetailModal'));
+  const content = document.getElementById('requestDetailContent');
+  
+  // Loading göster
+  content.innerHTML = `
+    <div class="text-center">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  `;
+  
+  modal.show();
+  
+  // Request detayını al
+  fetch(`./get_request_detail.php?id=${requestId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const req = data.request;
+        content.innerHTML = `
+          <div class="row">
+            <div class="col-md-6">
+              <h6>Category</h6>
+              <p class="text-muted">${req.category}</p>
+              
+              <h6>Status</h6>
+              <span class="badge ${getStatusBadgeClass(req.status)}">${req.status}</span>
+              
+              <h6 class="mt-3">Created</h6>
+              <p class="text-muted">${req.created_at}</p>
+            </div>
+            <div class="col-md-6">
+              ${req.media_path ? `
+                <h6>Media</h6>
+                <img src="${req.media_path}" class="img-fluid rounded mb-3" style="max-height: 200px;">
+              ` : ''}
+              
+              <h6>Location</h6>
+              <a href="https://maps.google.com/?q=${req.latitude},${req.longitude}" 
+                 target="_blank" class="btn btn-outline-primary btn-sm">
+                📍 View on Map
+              </a>
+            </div>
+          </div>
+          
+          <div class="row mt-3">
+            <div class="col-12">
+              <h6>Description</h6>
+              <div class="bg-light p-3 rounded">
+                ${req.description.replace(/\n/g, '<br>')}
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        content.innerHTML = `
+          <div class="alert alert-danger">
+            <h6>Error</h6>
+            <p>${data.message || 'Request details could not be loaded.'}</p>
+          </div>
+        `;
+      }
+    })
+    .catch(error => {
+      content.innerHTML = `
+        <div class="alert alert-danger">
+          <h6>Connection Error</h6>
+          <p>Could not load request details. Please try again.</p>
+        </div>
+      `;
+    });
+}
+
+// Tüm bildirimleri göster
+function showAllNotifications() {
+  const modal = new bootstrap.Modal(document.getElementById('allNotificationsModal'));
+  const content = document.getElementById('allNotificationsContent');
+  
+  content.innerHTML = `
+    <div class="text-center">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  `;
+  
+  modal.show();
+  
+  fetch('./get_all_notifications.php')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.notifications.length > 0) {
+        let html = '';
+        data.notifications.forEach(note => {
+          html += `
+            <div class="border-bottom py-3 ${note.is_read == 0 ? 'bg-light' : ''}" 
+                 style="cursor: pointer;" 
+                 onclick="showRequestDetails(${note.request_id || null})">
+              <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                  <p class="mb-1 ${note.is_read == 0 ? 'fw-bold' : 'text-muted'}">
+                    ${note.message}
+                  </p>
+                  <small class="text-muted">
+                    ${new Date(note.created_at).toLocaleString()}
+                  </small>
+                </div>
+                ${note.is_read == 0 ? '<span class="badge bg-primary">Yeni</span>' : ''}
+              </div>
+            </div>
+          `;
+        });
+        content.innerHTML = html;
+      } else {
+        content.innerHTML = '<div class="text-center text-muted py-4">Bildirim bulunamadı.</div>';
+      }
+    })
+    .catch(error => {
+      content.innerHTML = '<div class="alert alert-danger py-4">Bildirimler yüklenemedi.</div>';
+    });
+}
+
+// Status badge class helper
+function getStatusBadgeClass(status) {
+  switch(status) {
+    case 'Pending': return 'bg-warning text-dark';
+    case 'In Progress': return 'bg-info';
+    case 'Resolved': return 'bg-success';
+    default: return 'bg-secondary';
+  }
+}
+
+
+// Bildirim öğelerine tıklanınca request detaylarını getir
+document.querySelectorAll('.notification-item').forEach(item => {
+  item.addEventListener('click', function () {
+    const requestId = this.getAttribute('data-request-id');
+    showRequestDetails(requestId);
+  });
+});
+
+
+</script>
+
 </body>
 </html>
