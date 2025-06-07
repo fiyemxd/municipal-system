@@ -1,11 +1,19 @@
 <?php
 session_start();
-require_once __DIR__ . '/../config/db.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+require_once __DIR__ . '/../../config/db.php';
 
-$requestId = $_GET['request_id'] ?? null;
+header('Content-Type: application/json');
+
+$requestId = $_GET['id'] ?? null;
 
 if (!$requestId) {
-    echo "Request ID missing.";
+    echo json_encode([
+        'success' => false,
+        'message' => 'Request ID missing.'
+    ]);
     exit;
 }
 
@@ -15,17 +23,22 @@ try {
     $request = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$request) {
-        echo "Request ID $requestId not found.";
+        echo json_encode([
+            'success' => false,
+            'message' => "Request ID $requestId not found."
+        ]);
         exit;
     }
 
-    // Detayları burda göster
-    echo "<h2>Request Details for ID: $requestId</h2>";
-    echo "<p>Description: " . htmlspecialchars($request['description'] ?? 'No description') . "</p>";
-    echo "<p>Status: " . htmlspecialchars($request['status'] ?? 'Unknown') . "</p>";
-    // İstersen diğer alanları da yazdır
-
+    echo json_encode([
+        'success' => true,
+        'request' => $request
+    ]);
 } catch (PDOException $e) {
     error_log("Error fetching request detail: " . $e->getMessage());
-    echo "Error occurred.";
-}   
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error occurred while fetching request.'
+    ]);
+}
+

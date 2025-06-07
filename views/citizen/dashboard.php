@@ -45,6 +45,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// === TEK BİLDİRİMİ OKUNDU YAPMA İŞLEMİ ===
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'mark_single_read') {
+    $notificationId = $_POST['notification_id'] ?? null;
+    if ($notificationId) {
+        $result = Notification::markAsRead($notificationId, $_SESSION['user_id']);
+        echo json_encode(['success' => $result]);
+        exit;
+    }
+    echo json_encode(['success' => false]);
+    exit;
+}
+
 $requests = Request::getByUser($_SESSION['user_id']);
 $unreadNotifications = Notification::getUnread($_SESSION['user_id']);
 $allRecentNotifications = Notification::getRecent($_SESSION['user_id'], 10); // Son 10 bildirim
@@ -57,6 +69,46 @@ $unreadCount = count($unreadNotifications);
   <title>Your Requests</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+  /* Bildirim kutularının metin alanları düzgün satır kayması yapsın */
+  .notification-item p {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    margin-bottom: 5px;
+  }
+
+  /* Bildirim kutuları daha ferah ve okunaklı */
+  .notification-item {
+    padding: 12px 18px;
+    line-height: 1.5;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+  }
+
+  .notification-item:hover {
+    background-color: #f0f8ff; /* Hover efekti */
+  }
+
+  /* Zaten var ama varsa güçlendirelim */
+  #allNotificationsModal .modal-dialog {
+    max-width: 800px;
+  }
+
+  /* Description text styling */
+  .description-text {
+    line-height: 1.4;
+    max-height: 3.6em; /* ~3 satır */
+    overflow: hidden;
+  }
+
+  /* Büyüteç butonu hover efekti */
+  .btn:has(🔍):hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+  }
+</style>
+
 </head>
 <body>
 <?php include_once realpath(__DIR__ . '/../partials/navbar.php'); ?>
@@ -89,6 +141,7 @@ $unreadCount = count($unreadNotifications);
             <li class="<?= $note['is_read'] == 0 ? 'bg-light' : '' ?>">
               <div class="dropdown-item p-3 notification-item" 
                 data-request-id="<?= $note['request_id'] ?? '' ?>"
+                data-notification-id="<?= $note['id'] ?? '' ?>"
                 style="cursor: pointer;">
                 <div class="d-flex justify-content-between align-items-start">
                   <div class="flex-grow-1">
@@ -136,7 +189,7 @@ $unreadCount = count($unreadNotifications);
     </div>
   </div>
 
-  <table class="table table-bordered table-striped align-middle mt-3">
+<table class="table table-bordered table-striped align-middle mt-3">
     <thead class="table-dark">
       <tr>
         <th>Category</th>
@@ -144,14 +197,14 @@ $unreadCount = count($unreadNotifications);
         <th>Created At</th>
         <th>Media</th>
         <th>Location</th>
-        <th>Details</th>
+        <th style="min-width: 250px;">Details</th>
       </tr>
     </thead>
     <tbody>
       <?php foreach ($requests as $index => $req): ?>
         <tr>
-          <td><?= htmlspecialchars($req['category']) ?></td>
-          <td>
+          <td class="align-middle"><?= htmlspecialchars($req['category']) ?></td>
+          <td class="align-middle">
             <?php
               $badgeClass = match($req['status']) {
                 'Pending' => 'badge bg-warning text-dark',
@@ -162,8 +215,8 @@ $unreadCount = count($unreadNotifications);
               echo "<span class=\"$badgeClass\">{$req['status']}</span>";
             ?>
           </td>
-          <td><?= htmlspecialchars($req['created_at']) ?></td>
-          <td>
+          <td class="align-middle"><?= htmlspecialchars($req['created_at']) ?></td>
+          <td class="align-middle">
               <?php if ($req['media_path']): ?>
                   <a href="<?= base_url($req['media_path']) ?>" target="_blank">
                       <img src="<?= base_url($req['media_path']) ?>" style="width: 50px;">
@@ -172,35 +225,28 @@ $unreadCount = count($unreadNotifications);
                   <span class="text-muted">None</span>
               <?php endif; ?>
           </td>
-          <td>
-            <a href="https://maps.google.com/?q=<?= $req['latitude'] ?>,<?= $req['longitude'] ?>" target="_blank" class="btn btn-outline-primary btn-sm">Map</a>
+          <td class="align-middle">
+            <a href="https://maps.google.com/?q=<?= $req['latitude'] ?>,<?= $req['longitude'] ?>" target="_blank" class="btn btn-outline-primary btn-sm">📍 Map</a>
           </td>
-          <td>
-            <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#descModal<?= $index ?>">Details</button>
+          <td class="align-middle">
+            <div class="d-flex align-items-start justify-content-between">
+              <div class="description-text flex-grow-1 me-2" style="font-size: 1em; line-height: 1.4;">
+                <?php 
+                  $description = htmlspecialchars($req['description']);
+                  echo strlen($description) > 100 ? substr($description, 0, 100) . '...' : $description;
+                ?>
+              </div>
+              <button class="btn btn-outline-primary btn-sm flex-shrink-0" 
+                      onclick="showRequestDetails(<?= $req['id'] ?? $req['request_id'] ?? $index ?>)" 
+                      title="View Full Details">
+                🔍 Details
+              </button>
+            </div>
           </td>
         </tr>
-
-        <!-- Açıklama modalı -->
-        <div class="modal fade" id="descModal<?= $index ?>" tabindex="-1">
-          <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title">Description</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-              </div>
-              <div class="modal-body">
-                <?= nl2br(htmlspecialchars($req['description'])) ?>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
       <?php endforeach; ?>
     </tbody>
-  </table>
-</div>
+</table>
 
 <!-- Request Detay Modal -->
 <div class="modal fade" id="requestDetailModal" tabindex="-1">
@@ -241,16 +287,49 @@ $unreadCount = count($unreadNotifications);
 </div>
 
 <script>
+
+// Tek bildirimi okundu yapma fonksiyonu
+function markNotificationAsRead(notificationId) {
+  if (!notificationId) return Promise.resolve(false);
+
+  return fetch(window.location.href, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `action=mark_single_read&notification_id=${notificationId}`
+  })
+  .then(response => response.json())
+  .then(data => data.success)
+  .catch(() => false);
+}
+
 // Request detayını göster
-function showRequestDetails(requestId) {
+function showRequestDetails(requestId, notificationId = null) {
   if (!requestId) {
     alert('Bu bildirim için detay bulunamadı.');
     return;
   }
-  
+
+  // Eğer notification ID varsa, önce bildirimi okundu yap
+  if (notificationId) {
+    markNotificationAsRead(notificationId).then(() => {
+      // Bildirim okundu yapıldıktan sonra sayfayı yenile (bildirim sayacını güncellemek için)
+      setTimeout(() => {
+        location.reload();
+      }, 500);
+    });
+  }
+
+  // 🔽 "Tümünü gör" modalını kapat
+  const allNotifModal = bootstrap.Modal.getInstance(document.getElementById('allNotificationsModal'));
+  if (allNotifModal) {
+    allNotifModal.hide();
+  }
+
   const modal = new bootstrap.Modal(document.getElementById('requestDetailModal'));
   const content = document.getElementById('requestDetailContent');
-  
+
   // Loading göster
   content.innerHTML = `
     <div class="text-center">
@@ -259,10 +338,9 @@ function showRequestDetails(requestId) {
       </div>
     </div>
   `;
-  
+
   modal.show();
-  
-  // Request detayını al
+
   fetch(`./get_request_detail.php?id=${requestId}`)
     .then(response => response.json())
     .then(data => {
@@ -273,36 +351,39 @@ function showRequestDetails(requestId) {
             <div class="col-md-6">
               <h6>Category</h6>
               <p class="text-muted">${req.category}</p>
-              
+
               <h6>Status</h6>
               <span class="badge ${getStatusBadgeClass(req.status)}">${req.status}</span>
-              
+
               <h6 class="mt-3">Created</h6>
               <p class="text-muted">${req.created_at}</p>
-            </div>
-            <div class="col-md-6">
-              ${req.media_path ? `
-                <h6>Media</h6>
-                <img src="${req.media_path}" class="img-fluid rounded mb-3" style="max-height: 200px;">
-              ` : ''}
-              
-              <h6>Location</h6>
-              <a href="https://maps.google.com/?q=${req.latitude},${req.longitude}" 
-                 target="_blank" class="btn btn-outline-primary btn-sm">
-                📍 View on Map
-              </a>
-            </div>
-          </div>
-          
-          <div class="row mt-3">
-            <div class="col-12">
+
               <h6>Description</h6>
               <div class="bg-light p-3 rounded">
                 ${req.description.replace(/\n/g, '<br>')}
               </div>
             </div>
+            <div class="col-md-6">
+              ${req.media_path ? `
+                <h6>Media</h6>
+                <a href="/${req.media_path}" target="_blank">
+                  <img src="/${req.media_path}" class="img-fluid rounded mb-3" style="max-height: 200px;">
+                </a>
+              ` : ''}
+
+              <h6>Location</h6>
+              <div class="ratio ratio-4x3 mb-2">
+                <iframe 
+                  src="https://maps.google.com/maps?q=${req.latitude},${req.longitude}&hl=tr&z=16&output=embed"
+                  frameborder="0" 
+                  style="border:0;" 
+                  allowfullscreen>
+                </iframe>
+              </div>
+            </div>
           </div>
         `;
+
       } else {
         content.innerHTML = `
           <div class="alert alert-danger">
@@ -322,11 +403,12 @@ function showRequestDetails(requestId) {
     });
 }
 
+
 // Tüm bildirimleri göster
 function showAllNotifications() {
   const modal = new bootstrap.Modal(document.getElementById('allNotificationsModal'));
   const content = document.getElementById('allNotificationsContent');
-  
+
   content.innerHTML = `
     <div class="text-center">
       <div class="spinner-border" role="status">
@@ -334,9 +416,9 @@ function showAllNotifications() {
       </div>
     </div>
   `;
-  
+
   modal.show();
-  
+
   fetch('./get_all_notifications.php')
     .then(response => response.json())
     .then(data => {
@@ -344,12 +426,12 @@ function showAllNotifications() {
         let html = '';
         data.notifications.forEach(note => {
           html += `
-            <div class="border-bottom py-3 ${note.is_read == 0 ? 'bg-light' : ''}" 
+            <div class="notification-item border-bottom py-3 ${note.is_read == 0 ? 'bg-light' : ''}" 
                  style="cursor: pointer;" 
-                 onclick="showRequestDetails(${note.request_id || null})">
+                 onclick="showRequestDetails(${note.request_id || null}, ${note.id || null});">
               <div class="d-flex justify-content-between align-items-start">
                 <div class="flex-grow-1">
-                  <p class="mb-1 ${note.is_read == 0 ? 'fw-bold' : 'text-muted'}">
+                  <p class="mb-1 ${note.is_read == 0 ? 'fw-bold' : 'text-muted'}" title="${note.message}">
                     ${note.message}
                   </p>
                   <small class="text-muted">
@@ -386,7 +468,8 @@ function getStatusBadgeClass(status) {
 document.querySelectorAll('.notification-item').forEach(item => {
   item.addEventListener('click', function () {
     const requestId = this.getAttribute('data-request-id');
-    showRequestDetails(requestId);
+    const notificationId = this.getAttribute('data-notification-id');
+    showRequestDetails(requestId, notificationId);
   });
 });
 
